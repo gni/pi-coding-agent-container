@@ -8,7 +8,10 @@ services:
     
     tty: true
     stdin_open: true
-    
+
+    environment:
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+
     volumes:
       - workspace:/home/node/workspace
       - pi_data:/home/node/.pi
