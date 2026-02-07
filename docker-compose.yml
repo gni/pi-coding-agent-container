@@ -13,7 +13,7 @@ services:
       - GITHUB_TOKEN=${GITHUB_TOKEN}
 
     volumes:
-      - workspace:/home/node/workspace
+      - workspace:/workspace
       - pi_data:/home/node/.pi
       
     user: "${UID:-1000}:${GID:-1000}"
