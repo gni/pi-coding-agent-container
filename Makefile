@@ -18,11 +18,7 @@ build:
 # Run the agent in interactive mode
 # Passes the current user's UID/GID to the container
 run: setup
-	UID=$(UID) GID=$(GID) docker compose up pi-agent
-
-# Run the agent with arguments (e.g., make args="--help" run-args)
-run: setup
-	UID=$(UID) GID=$(GID) docker compose run --rm pi-agent $(args)
+	UID=$(UID) GID=$(GID) docker compose run --rm pi-agent
 
 # Run the agent with arguments (e.g., make args="--help" run-args)
 run-args: setup
