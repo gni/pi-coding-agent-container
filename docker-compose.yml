@@ -1,0 +1,40 @@
+services:
+  pi-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: local/pi-coding-agent:latest
+    container_name: pi_coding_agent
+    
+    tty: true
+    stdin_open: true
+    
+    volumes:
+      - workspace:/home/node/workspace
+      - pi_data:/home/node/.pi
+      
+    user: "${UID:-1000}:${GID:-1000}"
+    
+    networks:
+      - pi_network
+
+    restart: "no"
+
+volumes:
+  pi_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/.pi-data
+
+  workspace:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/workspace
+
+networks:
+  pi_network:
+    driver: bridge
