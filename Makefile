@@ -15,6 +15,10 @@ setup:
 build:
 	docker compose build
 
+# Build without cache the docker image locally from source/npm
+update:
+	docker compose build --no-cache
+
 # Run the agent in interactive mode
 # Passes the current user's UID/GID to the container
 run: setup
