@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-bookworm-slim AS base
+FROM ubuntu:25.10 AS base
 
 # Set environment variables for production and non-interactive installation
 ENV NODE_ENV=production
@@ -14,6 +14,8 @@ ENV NPM_CONFIG_LOGLEVEL=warn
 # - build-essential: For compiling native add-ons (if extensions require them)
 # - ca-certificates: Ensure SSL connections work securely
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    nodejs \
+    npm \
     git \
     curl \
     wget \
@@ -21,7 +23,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     procps \
     build-essential \
     python3 \
+    vim \
+    pipx \
+    jq \
     && rm -rf /var/lib/apt/lists/*
+
 
 # -----------------------------------------------------------------------------
 # Install GitHub CLI (gh)
@@ -33,6 +39,11 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
     && apt-get update \
     && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Python packages
+RUN pipx install uv pytest
+
+RUN useradd -U node
 
 FROM base AS release
 
