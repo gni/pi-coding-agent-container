@@ -40,9 +40,6 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
     && apt-get install -y gh \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python packages
-RUN pipx install uv pytest
-
 RUN useradd -U node
 
 FROM base AS release
@@ -56,7 +53,7 @@ RUN npm install -g @mariozechner/pi-coding-agent
 # Create the .pi directory structure to ensure permissions are correct when mounted
 RUN mkdir -p /home/node/.pi/agent && \
     mkdir -p /workspace && \
-    chown -R node:node /home/node/.pi && \
+    chown -R node:node /home/node/ && \
     chown -R node:node /workspace
 
 # Set the working directory to the project workspace
@@ -64,6 +61,10 @@ WORKDIR /workspace
 
 # Switch to non-root user for security
 USER node
+
+# Install Python packages in user home
+RUN pipx ensurepath && \
+    pipx install uv pytest pylint
 
 # Verify installation
 RUN pi --version
