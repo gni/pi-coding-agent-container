@@ -46,7 +46,14 @@ FROM base AS release
 
 # Install the pi-coding-agent globally
 # We verify the registry connection implicitly during install
-RUN npm install -g @mariozechner/pi-coding-agent
+RUN npm install -g @mariozechner/pi-coding-agent@0.57.1
+
+# Verify installation
+RUN pi --version
+
+# Install packages
+RUN pi install npm:token-rate-pi@latest
+
 
 # Create a non-root user setup
 # We use the existing 'node' user (UID 1000) provided by the base image
@@ -65,9 +72,6 @@ USER node
 # Install Python packages in user home
 RUN pipx ensurepath && \
     pipx install uv pytest pylint
-
-# Verify installation
-RUN pi --version
 
 ENTRYPOINT ["pi"]
 CMD []

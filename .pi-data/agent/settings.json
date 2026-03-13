@@ -1,0 +1,8 @@
+{
+  "lastChangelogVersion": "0.57.1",
+  "defaultProvider": "lmstudio",
+  "defaultModel": "qwen/qwen3.5-27b",
+  "extensions": [
+    "/usr/local/lib/node_modules/token-rate-pi/"
+  ]
+}

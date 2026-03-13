@@ -1,0 +1,27 @@
+{
+  "providers": {
+    "lmstudio": {
+      "baseUrl": "http://localhost:1234/v1",
+      "api": "openai-completions",
+      "apiKey": "foo",
+      "models": [
+        {
+          "id": "qwen/qwen3.5-27b",
+          "contextWindow": 65000
+        },
+        {
+          "id": "qwen/qwen3-coder-30b",
+          "contextWindow": 65000
+        },
+        {
+          "id": "qwen/qwen3-coder-next",
+          "contextWindow": 65000
+        },
+        {
+          "id": "openai/gpt-oss-20b",
+          "contextWindow": 65000
+        }
+      ]
+    }
+  }
+}
