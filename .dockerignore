@@ -15,6 +15,7 @@ yarn-error.log
 docker-compose.yml
 Dockerfile
 Dockerfile.*
+Makefile
 
 # Ignore system files
 .DS_Store
@@ -22,3 +23,9 @@ Thumbs.db
 
 # Ignore local agent data directory if mapped via bind mount
 .pi-data
+
+# Ignore credentials and secrets to prevent build cache leaks
+.secrets
+
+# Ignore workspace to optimize build context transfer speed
+workspace
