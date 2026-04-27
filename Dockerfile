@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM node:22-bookworm-slim AS base
+FROM node:22.22-trixie-slim AS base
 
 ENV NODE_ENV=production
 ENV DEBIAN_FRONTEND=noninteractive
