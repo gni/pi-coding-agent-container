@@ -21,8 +21,8 @@ COMMAND="${COMMAND,,}"
 SUBCOMMAND="${SUBCOMMAND,,}"
 
 if [ "${PARANOID_MODE}" = "true" ]; then
-    # Strict filter for authentication and state-altering commands
-    if [[ "$COMMAND" == "auth" || "$COMMAND" == "repo" || "$COMMAND" == "secret" || "$COMMAND" == "ssh-key" || "$COMMAND" == "gpg-key" ]]; then
+    # Strict filter for authentication, state-altering, and configuration commands
+    if [[ "$COMMAND" == "auth" || "$COMMAND" == "repo" || "$COMMAND" == "secret" || "$COMMAND" == "ssh-key" || "$COMMAND" == "gpg-key" || "$COMMAND" == "config" ]]; then
         
         # ZERO-TRUST EXCEPTION: Only allow credential helper if a legitimate background Git operation is occurring.
         if [[ "$COMMAND" == "auth" && "$SUBCOMMAND" == "git-credential" ]]; then
@@ -49,7 +49,7 @@ if [ "${PARANOID_MODE}" = "true" ]; then
             fi
         fi
 
-        echo "[SYSTEM BLOCK] Paranoid mode is active. Token access is explicitly hardware-locked to internal Git network operations." >&2
+        echo "[SYSTEM BLOCK] Paranoid mode is active. Token access and configuration are explicitly hardware-locked." >&2
         exit 1
     fi
 fi
