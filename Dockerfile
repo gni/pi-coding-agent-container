@@ -80,8 +80,9 @@ WORKDIR /workspace
 USER node
 
 # Force Git to use the secure CLI as its credential helper.
+# TARGET THE WRAPPER (/usr/local/bin/gh), NOT THE NATIVE BINARY (/usr/bin/gh)
 RUN git config --global credential.https://github.com.helper "" && \
-    git config --global credential.https://github.com.helper "!/usr/bin/gh auth git-credential"
+    git config --global credential.https://github.com.helper "!/usr/local/bin/gh auth git-credential"
 
 ENTRYPOINT ["pi"]
 CMD []
