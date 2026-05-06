@@ -42,8 +42,8 @@ if [ "${PARANOID_MODE}" = "true" ]; then
                     exit 1
                 fi
                 
-                # If the parent is performing a legitimate network operation, allow the helper to execute.
-                if [[ "$PARENT_CMDLINE" == *"push"* || "$PARENT_CMDLINE" == *"pull"* || "$PARENT_CMDLINE" == *"fetch"* || "$PARENT_CMDLINE" == *"clone"* || "$PARENT_CMDLINE" == *"ls-remote"* ]]; then
+                # If the parent is performing a legitimate network operation (including Git's internal HTTPS handler), allow the helper to execute.
+                if [[ "$PARENT_CMDLINE" == *"push"* || "$PARENT_CMDLINE" == *"pull"* || "$PARENT_CMDLINE" == *"fetch"* || "$PARENT_CMDLINE" == *"clone"* || "$PARENT_CMDLINE" == *"ls-remote"* || "$PARENT_CMDLINE" == *"remote-https"* ]]; then
                     exec /usr/bin/gh "$@"
                 fi
             fi
