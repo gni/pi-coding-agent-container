@@ -64,7 +64,7 @@ ENV NODE_OPTIONS="--require /usr/local/lib/app-firewall.js"
 
 FROM base AS release
 
-RUN npm install -g @mariozechner/pi-coding-agent
+RUN npm install -g @earendil-works/pi-coding-agent
 
 RUN mkdir -p /home/node/.pi/agent \
     /workspace \
