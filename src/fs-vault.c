@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <sys/syscall.h>
 
 static int (*real_open)(const char *, int, ...) = NULL;
 
@@ -18,7 +19,7 @@ static void init_hook() {
 int is_blocked(const char *pathname) {
     if (!pathname) return 0;
     
-    if (strstr(pathname, "auth.json") != NULL) {
+    if (strstr(pathname, "auth.json") != NULL || strstr(pathname, "gh_") != NULL) {
         init_hook();
         if (!real_open) return 0; // Failsafe
         
@@ -35,18 +36,63 @@ int is_blocked(const char *pathname) {
                 }
                 
                 // Whitelist the primary application process.
-                // The main agent must be allowed to read its token to authenticate with Copilot.
                 if (strstr(cmdline, "pi ") != NULL || strstr(cmdline, "/bin/pi") != NULL) {
                     return 0; // ALLOW
                 }
             }
         }
-        // Block all external utilities (cat, grep, tail) and custom agent scripts (node script.js)
         return 1; // BLOCK
     }
     return 0;
 }
 
+// -----------------------------------------------------------------------------
+// Execution Hook: Block malicious arguments passed to child processes
+// -----------------------------------------------------------------------------
+int execve(const char *pathname, char *const argv[], char *const envp[]) {
+    if (argv) {
+        for (int i = 0; argv[i] != NULL; i++) {
+            if (strstr(argv[i], "auth.json") != NULL || strstr(argv[i], ".secrets") != NULL || strstr(argv[i], "gh_") != NULL) {
+                errno = EACCES;
+                return -1;
+            }
+        }
+    }
+    int (*orig)(const char*, char* const*, char* const*) = dlsym(RTLD_NEXT, "execve");
+    return orig(pathname, argv, envp);
+}
+
+// -----------------------------------------------------------------------------
+// Master Syscall Hook: Defeat dynamically linked Rust/Go binaries utilizing 
+// direct raw syscalls (SYS_openat2) instead of standard libc wrappers.
+// -----------------------------------------------------------------------------
+long syscall(long number, ...) {
+    va_list args;
+    va_start(args, number);
+    long a1 = va_arg(args, long);
+    long a2 = va_arg(args, long);
+    long a3 = va_arg(args, long);
+    long a4 = va_arg(args, long);
+    long a5 = va_arg(args, long);
+    long a6 = va_arg(args, long);
+    va_end(args);
+
+    // SYS_open = 2, SYS_openat = 257, SYS_openat2 = 437
+    if (number == SYS_open || number == SYS_openat || number == 437) {
+        const char *pathname = (number == SYS_open) ? (const char *)a1 : (const char *)a2;
+        if (pathname && is_blocked(pathname)) {
+            errno = EACCES;
+            return -1;
+        }
+    }
+    
+    long (*orig)(long, ...) = dlsym(RTLD_NEXT, "syscall");
+    return orig(number, a1, a2, a3, a4, a5, a6);
+}
+
+// -----------------------------------------------------------------------------
+// Standard LibC Hooks
+// -----------------------------------------------------------------------------
 FILE *fopen(const char *pathname, const char *mode) {
     if (is_blocked(pathname)) {
         errno = EACCES;
