@@ -1,8 +1,8 @@
 # pi coding agent (dockerized)
 
-Almost secure, containerized environment for running the [pi coding agent](https://github.com/badlogic/pi-mono). Designed for local execution with strict file-system isolation, privilege drop, and persistent storage.
+Containerized environment for running the pi coding agent. It is packaged using the `@earendil-works/pi-coding-agent` npm module. Designed for local execution with strict file-system isolation, privilege drop, and persistent storage.
 
-## Quick Start
+## Quick start
 
 **1. Configuration**
 ```bash
@@ -26,7 +26,7 @@ make run
 
 ## Usage
 
-**Passing Arguments**
+**Passing arguments**
 Use the `run-args` target to pass specific flags, commands, or one-off prompts to the agent.
 ```bash
 # Check version
@@ -39,7 +39,7 @@ make args="/login" run-args
 make args="'Create a snake game in python'" run-args
 ```
 
-**Maintenance & Debugging**
+**Maintenance and debugging**
 ```bash
 # Access the container shell (runs as user 1000)
 make shell
@@ -53,7 +53,7 @@ make update
 
 ---
 
-## Offline Mode (llama.cpp)
+## Offline mode (llama.cpp)
 
 To run the agent completely offline using local models, configure the following files in your `.pi-data/agent/` directory:
 
@@ -87,31 +87,44 @@ To run the agent completely offline using local models, configure the following 
 
 ---
 
-## 🔒 Security Architecture & Paranoid Mode
+## 🔒 Security architecture
 
-This container implements a defense-in-depth architecture to sandbox the AI agent, ensuring it cannot leak credentials, modify its own access limits, or escalate privileges on your host machine.
+This container implements a layered security design to sandbox the AI agent.
 
-### 1. Paranoid Mode (Active by Default)
-The container uses a guardrail wrapper (`gh-guard.sh`) around the GitHub CLI. When `PARANOID_MODE=true` (set in `.env`), the agent is strictly blocked from executing dangerous repository or identity commands:
-* **Blocked:** `gh auth`, `gh repo`, `gh secret`, `gh ssh-key`, `gh gpg-key`.
-* This prevents a rogue agent from injecting a persistent backdoor key into your GitHub account.
+### Hardcoded command guardrail
+The container uses a custom wrapper script (`src/gh-guard.sh`) placed in the path to intercept calls to the GitHub CLI. It unconditionally blocks dangerous repository or identity commands:
+* **Blocked:** `gh auth` (except `git-credential`), `gh repo`, `gh secret`, `gh ssh-key`, `gh gpg-key`, `gh config`.
+* **Zero-trust exemption:** Allows the command `gh auth git-credential` only when it originates from a legitimate Git operation (such as push, pull, fetch, clone, ls-remote).
+* **Note:** The `PARANOID_MODE` environment variable defined in `.env` and `.env.example` is currently a placeholder; this command guardrail is hardcoded and always active.
 
-### 2. The Micro-Vault (Token Isolation)
-Your `GITHUB_TOKEN` is **never** exposed in environment variables where the agent can read it via `process.env`.
-* The token is mapped as a Docker Secret into RAM (`tmpfs`) and locked to host permissions `000`.
+### The micro-vault (token isolation)
+Your `GITHUB_TOKEN` is never exposed in the environment variables of the main agent's process:
+* The token is mapped as a Docker Secret.
 * The container runs as a standard user (`UID 1000`).
-* A custom C binary (`gh-vault`) uses SetUID to briefly elevate to root, read the token, pass it to the GitHub CLI, and immediately drop privileges. The agent natively receives `Permission Denied` if it attempts to read the file.
+* The custom SetUID C binary (`src/gh-vault.c`) compiled at `/usr/local/bin/gh` is owned by root. When invoked, it uses `setuid(0)` to read the secret in `/run/secrets/gh_*`, injects the token into the environment (`GITHUB_TOKEN` and `GH_TOKEN`), drops privileges back to the node user, and executes `/usr/local/bin/gh-guard`. The main agent cannot read the secret file directly due to file system permission blocks.
 
-### 3. Dual Execution Firewalls
-To prevent the agent from reading your Copilot `auth.json` or `.env` files, we implemented firewalls at both the OS and Application layers:
-* **OS Syscall Firewall (`LD_PRELOAD`):** A custom C library (`fs-vault.so`) intercepts `open()` and `fopen()` syscalls at the Linux kernel level. If the agent spawns native child processes (like `cat`, `grep`, or `python`) to snoop on config directories, the kernel forces an `EACCES` permission error.
-* **V8 Application Firewall:** A Node.js monkeypatch (`app-firewall.js`) intercepts the internal `fs` module. It analyzes the execution stack trace in real-time. If a file read/write request originates from the AI agent's tool directory, it throws a hard `[SYSTEM BLOCK]`. It only allows the core application (like the `/login` prompt) to touch credentials.
+### V8 application-layer firewall
+A Node.js preloaded module (`src/app-firewall.js`) is forced using `NODE_OPTIONS="--require ..."` to intercept the internal `fs` module:
+* It hooks standard filesystem methods and `fs.promises` methods.
+* It checks all target paths for the substrings `"gh_"`, `".secrets"`, or `".env"`.
+* If a path contains any of these strings, the firewall throws a `[system block]` error.
+* **Note:** This is a simple string-matching blocklist. It does not perform stack trace analysis.
 
-### 4. OS Binary Purge
-During the Docker build phase, all native Linux privilege escalation vectors are physically deleted from the image:
-* Removed: `su`, `mount`, `passwd`, `chsh`, `login`, `newgrp`, `unshare`, etc.
-* The SetUID/SetGID execution bits are globally stripped (`chmod a-s`) from all remaining binaries on the filesystem.
+### User-space OS path hook (LD_PRELOAD)
+A custom C library (`src/fs-vault.c`) compiled at `/usr/local/lib/fs-vault.so` is loaded globally via `/etc/ld.so.preload`:
+* It hooks dynamic linker calls to file-related standard C library functions (like `open`, `fopen`, `openat`, etc.).
+* It returns `EACCES` (Permission Denied) for paths containing `"auth.json"`, `/.secrets/`, or `/run/secrets/gh_`.
+* **Exemptions:** Allows file access if the calling binary is `/usr/local/bin/gh` or if the command line arguments in `/proc/self/cmdline` contain the substring `"pi "` or `"/bin/pi"`.
 
-### 5. Safe Persistence & Writable Space
-* **UID/GID Mapping:** The `Makefile` dynamically passes your host User ID and Group ID into the container. Any files the agent writes to the `./workspace` mount will be owned by your host user, preventing root permission lockouts.
-* **Anti-Compilation:** Writable temporary directories (`/tmp`, `/.npm`, `/.config`) are mounted using `tmpfs` with the `noexec` flag. This prevents the agent from downloading and executing statically compiled binaries to bypass the `LD_PRELOAD` firewall.
+### OS binary purge
+During the Docker build phase, native privilege escalation binaries are deleted from the system:
+* Removed: `su`, `mount`, `umount`, `passwd`, `chsh`, `chfn`, `chage`, `gpasswd`, `newgrp`, `login`, `nsenter`, `unshare`, `setpriv`.
+* The SetUID and SetGID bits are stripped globally from all other pre-existing system binaries.
+
+### L7 network intercept mesh (zonzon)
+To prevent the agent from communicating with unauthorized endpoints or exfiltrating data, all network traffic is isolated:
+* **No direct internet access:** The `pi-agent` container runs on an internal Docker bridge network (`pi_network`) that is explicitly configured with `internal: true` and has no gateway to the external internet.
+* **Connection redirect:** The `connect()` system call is intercepted by the preloaded `fs-vault.so` library. Non-loopback IPv4 connection attempts are hijacked and redirected to the `zonzon_mesh` proxy container at `172.53.0.53`.
+* **The DNS and L7 proxy (zonzon):** The `zonzon_mesh` container (defined in `Dockerfile.zonzon` and `docker-compose.yml`) has dual network attachments, giving it external internet access. It runs [zonzon](https://github.com/opensecurity/zonzon) to act as both the DNS server (on port 53) and an HTTP/HTTPS proxy. It filters all redirected traffic using the domain allow-list configured in `config/hosts.json`:
+  * **Allowed domains:** `*.ubuntu.com`, `ubuntu.com`, `*.github.com`, `github.com`, `*.githubusercontent.com`, `pi.dev`.
+  * **Default policy:** Deny (all other DNS queries and TCP connections are blocked).
