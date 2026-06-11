@@ -2,6 +2,24 @@
 
 Containerized environment for running the pi coding agent. It is packaged using the `@earendil-works/pi-coding-agent` npm module. Designed for local execution with strict file-system isolation, privilege drop, and persistent storage.
 
+## 🚨 Deprecation Notice: Repository Moved
+
+> **Important:** This repository is no longer actively maintained.
+
+The architecture from this project has been evolved into a multi-agent ecosystem.
+
+### Why the move?
+
+* **Multi-Agent Support:** The new repository is completely generic, allowing you to run and orchestrate more than just a single agent.
+* **Stronger Isolation:** Security layers have been upgraded to provide even stricter container-level isolation and robust environment controls.
+
+### ➡️ Next Steps
+
+Please migrate your setups and follow future updates over at the new repository:
+
+👉 **[github.com/gni/agents-container](https://github.com/gni/agents-container)**
+
+
 ## Quick start
 
 **1. Configuration**
